@@ -1,0 +1,64 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=16
+
+sampleid=
+threadNum=16
+path=/…/
+
+## 1.fastqc
+
+input=$path/00-fastq-truseq/
+output=$path/01-fastQC/$sampleid
+mkdir -p $output
+fq_file=$(find $input -name $sampleid* | sort)
+fastqc -o $output --nogroup -t $threadNum -k 8 $fq_file
+cd $output
+unzip \*.zip
+cd
+
+## 2.quality trim cutadapt
+
+output=$path/02-trimming/cutadapt/$sampleid
+mkdir -p $output
+cutadapt -a file:$trim_fasta -g file:$trim_fasta -A file:$trim_fasta -G file:$trim_fasta -m 50 --trim-n --max-n 0.7 -q 10,10 -u 5 -U 5 -o $output/$sampleid"_R1_filtered.fastq.gz" -p $output/$sampleid"_R2_filtered.fastq.gz" $fq_file
+
+
+## 3. post trim qc
+
+input=$path/02-trimming/trimmomatic/$sampleid
+output=$path/03-postQC/trimmomatic/$sampleid
+mkdir -p $output
+fastqc -o $output --nogroup -t $threadNum -k 8 $input/*filtered.fastq.gz
+cd $output
+unzip \*.zip
+cd
+
+## 4.kraken2 classification ##
+
+kraken2=/…/kraken2
+covid19=/…/kraken2/database/covid19
+input=$path/02-trimming/cutadapt/$sampleid
+output=$path/04-kraken/cutadapt/$sampleid
+mkdir -p $output
+$kraken2 --threads $threadNum --db $covid19 --paired --output $output/$sampleid.kraken --report $output/$sampleid'_'report $input/$sampleid'_R1_'filtered.fastq.gz $input/$sampleid'_R2_'filtered.fastq.gz
+
+## 5. bwa alignment ##
+
+input=$path/02-trimming/cutadapt/$sampleid
+output=$path/05-bwa/cutadapt/$sampleid
+virus_ref=/…/Covid19/ref_genome/NC_045512.2.fasta
+picard_path=/home/genomics/bioinformatics/app/picard/picard-tools-1.141/picard.jar
+mkdir -p $output
+bwa mem -t 10 $virus_ref $input/$sampleid'_R1_'filtered.fastq.gz  $input/$sampleid'_R2_'filtered.fastq.gz > $output/$sampleid.sam
+samtools view -b $output/$sampleid.sam > $output/$sampleid.bam
+samtools sort -o $output/$sampleid'_'sorted.bam -O bam -T $output/$sampleid $output/$sampleid.bam
+samtools index $output/$sampleid'_'sorted.bam
+samtools rmdup --output-fmt bam $output/$sampleid'_'sorted.bam $output/$sampleid'_'dedup.bam
+samtools sort -o $output/$sampleid'_dedup_sorted'.bam -O bam -T $output/$sampleid $output/$sampleid'_dedup'.bam
+samtools index $output/$sampleid'_dedup_sorted'.bam
+samtools flagstat $output/$sampleid'_dedup_sorted'.bam > $output/$sampleid'_'flagstat.txt
+rm $output/$sampleid.sam $output/$sampleid.bam $output/$sampleid.bam
+samtools view -b -F 4 $output/$sampleid'_dedup_sorted'.bam > $output/$sampleid'_'onlymapped.bam
+samtools sort -o $output/$sampleid'_onlymapped_sorted'.bam -O bam -T $output/$sampleid $output/$sampleid'_'onlymapped.bam
+samtools index $output/$sampleid'_onlymapped_sorted'.bam
+rm $output/$sampleid'_'onlymapped.bam
