@@ -1,0 +1,25 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=16
+
+sampleid=
+threadNum=16
+path=/…/
+
+input=$path/02-trimming/cutadapt/$sampleid
+output=$path/05-bwa/cutadapt/$sampleid
+virus_ref=/…/Covid19/ref_genome/NC_045512.2.fasta
+picard_path=/home/genomics/bioinformatics/app/picard/picard-tools-1.141/picard.jar
+mkdir -p $output
+bwa mem -t 10 $virus_ref $input/$sampleid'_R1_'filtered.fastq.gz  $input/$sampleid'_R2_'filtered.fastq.gz > $output/$sampleid.sam
+samtools view -b $output/$sampleid.sam > $output/$sampleid.bam
+samtools sort -o $output/$sampleid'_'sorted.bam -O bam -T $output/$sampleid $output/$sampleid.bam
+samtools index $output/$sampleid'_'sorted.bam
+samtools rmdup --output-fmt bam $output/$sampleid'_'sorted.bam $output/$sampleid'_'dedup.bam
+samtools sort -o $output/$sampleid'_dedup_sorted'.bam -O bam -T $output/$sampleid $output/$sampleid'_dedup'.bam
+samtools index $output/$sampleid'_dedup_sorted'.bam
+samtools flagstat $output/$sampleid'_dedup_sorted'.bam > $output/$sampleid'_'flagstat.txt
+rm $output/$sampleid.sam $output/$sampleid.bam $output/$sampleid.bam
+samtools view -b -F 4 $output/$sampleid'_dedup_sorted'.bam > $output/$sampleid'_'onlymapped.bam
+samtools sort -o $output/$sampleid'_onlymapped_sorted'.bam -O bam -T $output/$sampleid $output/$sampleid'_'onlymapped.bam
+samtools index $output/$sampleid'_onlymapped_sorted'.bam
+rm $output/$sampleid'_'onlymapped.bam
