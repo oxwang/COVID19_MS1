@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=16
+
+sampleid=
+threadNum=16
+path=/…/
+
+kraken2=/…/kraken2
+covid19=/…/kraken2/database/covid19
+input=$path/02-trimming/cutadapt/$sampleid
+output=$path/04-kraken/cutadapt/$sampleid
+mkdir -p $output
+$kraken2 --threads $threadNum --db $covid19 --paired --output $output/$sampleid.kraken --report $output/$sampleid'_'report $input/$sampleid'_R1_'filtered.fastq.gz $input/$sampleid'_R2_'filtered.fastq.gz
