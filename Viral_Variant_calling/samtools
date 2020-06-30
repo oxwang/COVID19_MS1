@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=16
+
+sampleid=
+threadNum=16
+path=/…/
+
+
+input=$path/05-bwa/cutadapt/$sampleid
+output=$path/06-variant_calling/$sampleid
+virus_gff=/…/Covid19/ref_genome/NC_045512.gff
+mkdir -p $output
+samtools mpileup -a -A -d 20000 -Q 0 -f $virus_ref $input/$sampleid'_onlymapped_sorted'.bam > $output/$sampleid.pileup
