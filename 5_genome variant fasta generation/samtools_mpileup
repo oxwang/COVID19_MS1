@@ -1,0 +1,5 @@
+input=path to sorted bam files
+for f in `cat bam_list.txt`; do
+samtools mpileup -uf bwa_index/NC_045512.2.fasta input/$f\_primertrimmed_sorted.bam | bcftools call -c | vcfutils.pl vcf2fq > $f.fq
+cat $f.fq | awk '/@/{ P=1; next } /\+/ {exit} P' | tr '[:lower:]' '[:upper:]' > $f.fasta
+rm $f.fq; done
