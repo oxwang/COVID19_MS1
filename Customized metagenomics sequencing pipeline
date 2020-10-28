@@ -71,3 +71,10 @@ virus_gff=/…/Covid19/ref_genome/NC_045512.gff
 mkdir -p $output
 samtools mpileup -a -A -d 20000 -Q 0 -f $virus_ref $input/$sampleid'_onlymapped_sorted'.bam > $output/$sampleid.pileup
 
+## 7. Genome FASTA generation
+
+input=path to sorted bam files
+for f in `cat bam_list.txt`; do
+samtools mpileup -uf bwa_index/NC_045512.2.fasta input/$f\_primertrimmed_sorted.bam | bcftools call -c | vcfutils.pl vcf2fq > $f.fq
+cat $f.fq | awk '/@/{ P=1; next } /\+/ {exit} P' | tr '[:lower:]' '[:upper:]' > $f.fasta
+rm $f.fq; done
